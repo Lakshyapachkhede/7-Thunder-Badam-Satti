@@ -1,6 +1,7 @@
 import pygame
 import random
 import time
+import sys
 from buttons import Button
 
 
@@ -20,7 +21,7 @@ WHITE = (255, 255, 255)
 CARD_SIZE = (80, 120)
 HOVER_CARD_SIZE = (120, 180)
 
-FONT = pygame.font.Font(r"E:\projects\games\7-Thunder\assets\fonts\Boniro.ttf", 50)
+FONT = pygame.font.Font(r"E:\projects\games\7-Thunder\assets\fonts\Boniro.ttf", 40)
 # FONT.set_bold(True)
 
 clock = pygame.time.Clock()
@@ -36,9 +37,9 @@ arrow_img = pygame.transform.scale(arrow_img, (30, 54)).convert_alpha()
 
 
 
-
+groups = ["h", "s", "c", "d"]
 cardList = []
-for group in ["h", "s", "c", "d"]:
+for group in groups:
     for i in range(1, 14):
         cardList.append(group + str(i))
 
@@ -89,7 +90,10 @@ class Card:
 
     def isMouseOver(self):
         mouseX, mouseY = pygame.mouse.get_pos()
-        if self.rect.collidepoint(mouseX, mouseY):
+        if self.rect.collidepoint(mouseX, mouseY) and Player.canPlayCard(self):
+            self.drawBorder(GREEN)
+            return True
+        elif self.rect.collidepoint(mouseX, mouseY):
             self.drawBorder(RED)
             return True
         return False
@@ -116,13 +120,29 @@ class BoardCard(Card):
 
 
 class Player:
-    def __init__(self, cards, playerNumber):
-        self.cards = cards
+    """Player Class for game Players"""
+    def __init__(self, cards, playerNumber,color, name):
+        self.cards = sorted(cards, key=self.custom_sort)
         self.playerNumber = playerNumber
         self.objCards = []
+        self.color = color
+        self.name = name
+        self.lastPlayedCard = None
 
 
-    
+
+
+    @staticmethod
+    def custom_sort(card):
+        # Define the order of card groups
+        group_order = {'h': 2, 'c': 0, 's': 3, 'd': 1}
+        # Extract the card group and value from the card string
+        group = card[0]
+        value = int(card[1:])
+        # Sort first by card group, then by card value
+        return (group_order[group], value)
+
+
     def initCards(self):
         y = 628
         x = 163
@@ -135,6 +155,8 @@ class Player:
             self.objCards.append(card)
 
     def drawCards(self):
+        if self.lastPlayedCard:
+            self.lastPlayedCard.drawBorder(self.color)
         prevCard = None
         for card in self.objCards:
             if self.playerNumber == 1 or self.playerNumber == 3:
@@ -157,6 +179,7 @@ class Player:
     def selectCard(self):
         passButton = Button(10, 20, 100, 50, RED, BLUE, YELLOW, YELLOW, "Pass")
         for card in self.objCards:
+
             if (card.isMouseOver() and pygame.mouse.get_pressed()[0]):
                 card.drawBorder(GREEN)
                 if self.playMove(card):
@@ -167,15 +190,44 @@ class Player:
         if (passButton.activate_button(window) == True) and self.canPass():
             time.sleep(0.1)
             return True
-        
     
+    def canPlayCard(self, card):
+            if card.value == 7 and card.group == "h":
+                return True
+            
+            if boardCardDict["h"]["top"] != - 1:
+                if card.value == 7 and boardCardDict[card.group]["top"] == -1:
+                    return True
+                
+                if (card.value == boardCardDict[card.group]["top"] + 1 ) or (card.value == boardCardDict[card.group]["bottom"]  - 1):
+                    return True
+    
+            return False
+    
+    @staticmethod
+    def canPlayCard(card):
+            if card.value == 7 and card.group == "h":
+                return True
+            
+            if boardCardDict["h"]["top"] != - 1:
+                if card.value == 7 and boardCardDict[card.group]["top"] == -1:
+                    return True
+                
+                if (card.value == boardCardDict[card.group]["top"] + 1 ) or (card.value == boardCardDict[card.group]["bottom"]  - 1):
+                    return True
+    
+            return False
+    
+
     def playMove(self, card):
         if boardCardDict[card.group]["top"] == -1:
             if card.value == 7 and card.group == "h":
                 boardCardDict["h"]["top"] = 7
                 boardCardDict["h"]["bottom"] = 7
                 self.objCards.remove(card)
-                boardCardsList.append(card.toBoardCard())
+                boardCard = card.toBoardCard()
+                self.lastPlayedCard = boardCard
+                boardCardsList.append(boardCard)
                 return True
 
 
@@ -183,7 +235,9 @@ class Player:
                 boardCardDict[card.group]["top"] = 7
                 boardCardDict[card.group]["bottom"] = 7
                 self.objCards.remove(card)
-                boardCardsList.append(card.toBoardCard())
+                boardCard = card.toBoardCard()
+                self.lastPlayedCard = boardCard
+                boardCardsList.append(boardCard)
                 return True
 
 
@@ -191,21 +245,41 @@ class Player:
             if boardCardDict[card.group]["top"] + 1 == card.value:
                 boardCardDict[card.group]["top"]+=1
                 self.objCards.remove(card)
-                boardCardsList.append(card.toBoardCard())
+                boardCard = card.toBoardCard()
+                self.lastPlayedCard = boardCard
+                boardCardsList.append(boardCard)
                 return True
 
 
             elif boardCardDict[card.group]["bottom"] - 1 == card.value :
                 boardCardDict[card.group]["bottom"]-=1
                 self.objCards.remove(card)
-                boardCardsList.append(card.toBoardCard())
+                boardCard = card.toBoardCard()
+                self.lastPlayedCard = boardCard
+                boardCardsList.append(boardCard)
                 return True
         time.sleep(0.1)    #time.sleep(0.1) for slowing selection of cards 
         
-        
+    def findStopCards(self):
+        stopCardsList = []
+        for group in groups:
+            highest = None
+            lowest = None
+
+            for card in self.objCards:
+                if card.group == group:
+                    if highest is None or card.value > highest.value:
+                        highest = card
+                    if lowest is None or card.value < lowest.value:
+                        lowest = card
+    
+            stopCardsList.append(highest)
+            stopCardsList.append(lowest)
+        return stopCardsList
+    
+
     def checkWin(self):
         if len(self.objCards) == 0:
-            renderText(f' Player {self.playerNumber} win', 300, 200, RED)
             return True
         
     def canPass(self):
@@ -228,8 +302,9 @@ class Player:
         return False
         
 class AiPlayer(Player):
-    def __init__(self, cards, playerNumber):
-        super().__init__(cards, playerNumber)
+    """Ai Player Class for game Players"""
+    def __init__(self, cards, playerNumber, color, name):
+        super().__init__(cards, playerNumber, color, name)
         if self.playerNumber == 2:
             self.fixCoordinate = 20
             self.incrementCoordinate = 104
@@ -242,19 +317,74 @@ class AiPlayer(Player):
             self.fixCoordinate = 1226
             self.incrementCoordinate = 104
             self.incrementvalue = 40
-    
+
+            self.stopCards = []
+
 
     def initCards(self):
         for card in self.cards:
             group = card[0]
             value = int(card[1:])
-            img = fr"E:\projects\games\7-Thunder\assets\img\Cards\{group}\{value}.png"
+            img = fr"E:\projects\games\7-Thunder\assets\img\rszCardBack.png" #change png to rszCardBack for hidden
             card = Card(group, value, img, self.fixCoordinate if self.playerNumber!=3 else self.incrementCoordinate,
                          self.fixCoordinate if self.playerNumber==3 else self.incrementCoordinate)
             if self.playerNumber != 3:
                 card.rotateCard(-90)
             self.incrementCoordinate+=self.incrementvalue
             self.objCards.append(card)
+
+
+    def selectCard(self):
+
+        """
+        Best Move Strategy:
+        1. If canPass, then sleep for 3 seconds and return True.
+        2. Check if there's a 7 of hearts and play it if found.
+        3. Check for stop cards. If found, play the highest card greater than the highest stop card
+           or play the lowest card smaller than the lowest stop card.
+        4. If no stop cards are found, play the highest card not in the stop cards list.
+        """
+        thinking_time = random.uniform(1.0, 1.5)  # Random delay between 1 and 3 seconds
+        time.sleep(thinking_time)
+        if self.canPass():
+            return True
+
+
+        canPlayCards = []
+
+        for card in self.objCards:
+            if card.value == 7 and card.group == "h":
+                self.playMove(card)
+
+                return True
+            
+            if self.canPlayCard(card) and (card not in self.stopCards):
+                canPlayCards.append(card)
+
+        if len(canPlayCards) == 0:
+            for card in self.stopCards:
+                if self.canPlayCard(card):
+                    canPlayCards.append(card)
+
+
+        for card in canPlayCards:
+            if card == None:
+                canPlayCards.remove(card)
+
+
+            
+
+        # Play the middle card from the list of playable cards
+        if len(canPlayCards) != 0:
+            card_to_play = canPlayCards[len(canPlayCards) // 2]
+            if self.playMove(card_to_play):
+                canPlayCards.remove(card_to_play)
+                if card_to_play in self.stopCards:
+                    self.stopCards.remove(card_to_play)
+                return True
+
+        return False  # No valid move found
+
 
     
 def renderText(msg, x, y, color):
@@ -271,14 +401,22 @@ def shuffleCards():
 
 shuffleCards()
 
-turn = 0
+def checkFirstTurn():
+    global arrow_img
+    for number, player in enumerate(playerList):
+        if player.haveCard("h", 7):
+            arrow_img = pygame.transform.rotate(arrow_img, -90 * number)
+            return number
+
+
+
+
+
 
 def showTurn():
-
     if turn == 0:
         window.blit(arrow_img, (180, 550))
     elif turn == 1:
-
         window.blit(arrow_img, (160, 150))
     elif turn == 2:
         window.blit(arrow_img, (180, 160))
@@ -286,20 +424,41 @@ def showTurn():
         window.blit(arrow_img, (1160, 150))
 
 
-
 cards = [cardList[0:13], cardList[13:26], cardList[26:39], cardList[39:52]]
 
-player1 = Player(cards[0], 1)
-player2 = AiPlayer(cards[1], 2)
-player3 = AiPlayer(cards[2], 3)
-player4 = AiPlayer(cards[3], 4)
+player1 = Player(cards[0], 1, RED, "RED")
+player2 = AiPlayer(cards[1], 2, BLUE, "BLUE")
+player3 = AiPlayer(cards[2], 3, GREEN, "GREEN")
+player4 = AiPlayer(cards[3], 4, YELLOW, "YELLOW")
 
 playerList = [player1, player2, player3, player4]
 
 for player in playerList:
     player.initCards()
+    player.stopCards = player.findStopCards()
 
-x = Button(1250, 20, 100, 50, RED, BLUE, YELLOW, YELLOW, "Quit", pygame.quit)
+
+def showName():
+    for player in playerList:
+        if player.playerNumber == 1:
+            renderText(player.name, 220, 560, player.color)
+        if player.playerNumber == 2:
+            name = FONT.render(player.name, 1, player.color)
+            name = pygame.transform.rotate(name, -90)
+            window.blit(name, (160, 220))
+
+        if player.playerNumber == 3:
+            renderText(player.name, 220, 170, player.color)
+        if player.playerNumber == 4:
+            name = FONT.render(player.name, 1, player.color)
+            name = pygame.transform.rotate(name, -90)
+            window.blit(name, (1160, 190))
+
+
+quitButton = Button(1250, 20, 100, 50, RED, BLUE, YELLOW, YELLOW, "Quit", pygame.quit)
+turn = checkFirstTurn()
+
+# def winScreen(player)
 
 
 def main():
@@ -307,6 +466,7 @@ def main():
     run = True
     while run:
         clock.tick(FPS)
+        window.blit(background_img, (0, 0))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -316,27 +476,38 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     run = False
 
-        window.blit(background_img, (0, 0))
+
 
         drawBoardCards()
         for player in playerList:
             player.drawCards()
-            player.checkWin()
+            if player.checkWin():
+                # winScreen(player)
+                pass
             
         if playerList[turn].selectCard():
             if turn == 3:
                 turn = 0
                 arrow_img = pygame.transform.rotate(arrow_img, -90)
+
             elif turn < 3:
                 arrow_img = pygame.transform.rotate(arrow_img, -90)
                 turn+=1
 
+
         showTurn()
+        showName()
+
         # renderText("Hello", 200, 200, RED)
-        x.activate_button(window)
+        quitButton.activate_button(window)
+
+
         pygame.display.flip()
 
 
-
 if __name__ == '__main__':
+
     main()
+
+    pygame.quit()
+    sys.exit()
