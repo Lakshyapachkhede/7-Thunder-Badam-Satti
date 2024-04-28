@@ -8,9 +8,8 @@ Welcome to 7 Thunder Badam Satti! This repository contains an implementation of 
 ## Features
 
 - **Authentic Gameplay:** Experience the excitement of playing Badam Satti with faithful rules and mechanics.
-- **Customizable Settings:** Adjust the game settings to your liking, including player count, deck types, and more.
 - **Interactive Interface:** Enjoy a user-friendly interface designed for seamless gameplay and intuitive controls.
-- **Multiplayer Support:** Challenge your friends or play against AI opponents for solo enjoyment.
+
 
 ## How to Play
 
