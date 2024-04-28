@@ -1,9 +1,9 @@
 import pygame
 pygame.init()
-
+pygame.mixer.init()
 
 font_button = pygame.font.Font(r"assets\fonts\Boniro.ttf", 30)
-
+clickSound = pygame.mixer.Sound(r"assets\sound\click.mp3")
 
 
 class Button:
@@ -39,6 +39,7 @@ class Button:
     def activate_button(self, window):
         self.draw(window)
         if self.is_mouse_over() and pygame.mouse.get_pressed()[0]:
+            clickSound.play()
             if self.action != None:
                 self.action()
             return True

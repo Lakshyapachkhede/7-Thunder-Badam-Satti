@@ -3,7 +3,7 @@ import random
 import time
 import sys
 from buttons import Button
-
+import math
 
 pygame.init()
 
@@ -16,12 +16,14 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 
 
 CARD_SIZE = (80, 120)
 HOVER_CARD_SIZE = (120, 180)
 
 FONT = pygame.font.Font(r"E:\projects\games\7-Thunder\assets\fonts\Boniro.ttf", 40)
+CAPITAL_FONT = pygame.font.Font(r"E:\projects\games\7-Thunder\assets\fonts\capital.ttf", 70)
 # FONT.set_bold(True)
 
 clock = pygame.time.Clock()
@@ -31,6 +33,9 @@ pygame.display.set_caption("7-Thunder")
 
 background_img = pygame.image.load(r"E:\projects\games\7-Thunder\assets\img\back.png")
 background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT)).convert_alpha()
+
+menu_img = pygame.image.load(r"E:\projects\games\7-Thunder\assets\img\menu.jpg")
+menu_img = pygame.transform.scale(menu_img, (WIDTH, HEIGHT)).convert_alpha()
 
 arrow_img = pygame.image.load(r"E:\projects\games\7-Thunder\assets\img\arrow.png")
 arrow_img = pygame.transform.scale(arrow_img, (30, 54)).convert_alpha()
@@ -179,7 +184,8 @@ class Player:
     def selectCard(self):
         passButton = Button(10, 20, 100, 50, RED, BLUE, YELLOW, YELLOW, "Pass")
         for card in self.objCards:
-
+            if card == None:
+                self.objCards.remove(card)
             if (card.isMouseOver() and pygame.mouse.get_pressed()[0]):
                 card.drawBorder(GREEN)
                 if self.playMove(card):
@@ -355,7 +361,6 @@ class AiPlayer(Player):
         for card in self.objCards:
             if card.value == 7 and card.group == "h":
                 self.playMove(card)
-
                 return True
             
             if self.canPlayCard(card) and (card not in self.stopCards):
@@ -383,7 +388,7 @@ class AiPlayer(Player):
                     self.stopCards.remove(card_to_play)
                 return True
 
-        return False  # No valid move found
+        return True  # No valid move found
 
 
     
@@ -398,15 +403,16 @@ def drawBoardCards():
 
 def shuffleCards():
     random.shuffle(cardList)
+for _ in range(3):
+    shuffleCards()
 
-shuffleCards()
-
-def checkFirstTurn():
+def checkFirstTurn(playerList):
     global arrow_img
     for number, player in enumerate(playerList):
         if player.haveCard("h", 7):
             arrow_img = pygame.transform.rotate(arrow_img, -90 * number)
             return number
+
 
 
 
@@ -425,6 +431,7 @@ def showTurn():
 
 
 cards = [cardList[0:13], cardList[13:26], cardList[26:39], cardList[39:52]]
+
 
 player1 = Player(cards[0], 1, RED, "RED")
 player2 = AiPlayer(cards[1], 2, BLUE, "BLUE")
@@ -456,9 +463,86 @@ def showName():
 
 
 quitButton = Button(1250, 20, 100, 50, RED, BLUE, YELLOW, YELLOW, "Quit", pygame.quit)
-turn = checkFirstTurn()
+turn = checkFirstTurn(playerList)
 
-# def winScreen(player)
+def restartGame():
+    global cards, player1, player2, player3, player4, turn, playerList, cardList, boardCardsList, boardCardDict
+    boardCardDict = {
+    "h": {"top":-1, "bottom":-1},
+    "d": {"top":-1, "bottom":-1},
+    "s": {"top":-1, "bottom":-1},
+    "c": {"top":-1, "bottom":-1}
+    }
+    boardCardsList = []
+    cardList = []
+    for group in groups:
+        for i in range(1, 14):
+            cardList.append(group + str(i))
+    for _ in range(3):
+        shuffleCards()
+    cards = [cardList[0:13], cardList[13:26], cardList[26:39], cardList[39:52]]
+    player1 = Player(cards[0], 1, RED, "RED")
+    player2 = AiPlayer(cards[1], 2, BLUE, "BLUE")
+    player3 = AiPlayer(cards[2], 3, GREEN, "GREEN")
+    player4 = AiPlayer(cards[3], 4, YELLOW, "YELLOW")
+    playerList = [player1, player2, player3, player4]
+    for player in playerList:
+        player.initCards()
+        player.stopCards = player.findStopCards()
+    turn = checkFirstTurn(playerList)
+
+    main()
+
+
+def winScreen(player):
+    run = True
+    winText = CAPITAL_FONT.render(f"{player.name.capitalize()} WIN", 1, WHITE)
+    buttons = [Button(563, 300, 200, 50, RED, BLUE, YELLOW, YELLOW, "Play Again", restartGame),
+                Button(563, 400, 200, 50, RED, BLUE, YELLOW, YELLOW, "Quit", pygame.quit)]
+
+
+    while run:
+        clock.tick(FPS)
+        window.blit(menu_img, (0, 0))
+        window.blit(winText, (((WIDTH - winText.get_width())//2) - 20, 140))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    run = False
+
+        for button in buttons:
+            button.activate_button(window)
+
+        pygame.display.flip()
+
+def homeScreen():
+    run = True
+    winText = CAPITAL_FONT.render(f"7 - Thunder", 1, WHITE)
+    buttons = [Button(563, 300, 200, 50, RED, BLUE, YELLOW, YELLOW, "Play", main),
+                Button(563, 400, 200, 50, RED, BLUE, YELLOW, YELLOW, "Quit", pygame.quit)]
+
+
+    while run:
+        clock.tick(FPS)
+        window.blit(menu_img, (0, 0))
+        window.blit(winText, (((WIDTH - winText.get_width())//2) - 20, 140))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    run = False
+
+        for button in buttons:
+            button.activate_button(window)
+
+        pygame.display.flip()
+
+
 
 
 def main():
@@ -478,13 +562,20 @@ def main():
 
 
 
+
+        showTurn()
+        showName()
         drawBoardCards()
+        quitButton.activate_button(window)
         for player in playerList:
             player.drawCards()
             if player.checkWin():
-                # winScreen(player)
-                pass
-            
+                run = False
+                winScreen(player)
+                break
+                
+        
+
         if playerList[turn].selectCard():
             if turn == 3:
                 turn = 0
@@ -494,20 +585,14 @@ def main():
                 arrow_img = pygame.transform.rotate(arrow_img, -90)
                 turn+=1
 
-
-        showTurn()
-        showName()
-
         # renderText("Hello", 200, 200, RED)
-        quitButton.activate_button(window)
-
-
         pygame.display.flip()
 
 
 if __name__ == '__main__':
 
-    main()
+    homeScreen()
 
     pygame.quit()
     sys.exit()
+    
